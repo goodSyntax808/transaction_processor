@@ -1,0 +1,13 @@
+[package]
+name = "tx-processor-cli"
+version = "0.1.0"
+edition = "2021"
+default-run = "tx-processor-cli"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tx-processor = { path = "../tx-processor" }
+simple_logger = "2.1.0"
+csv = "1.1.6"
+clap = { version = "3.1.18", features = ["derive", "wrap_help"] }

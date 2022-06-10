@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "tx-processor",
+    "tx-processor-cli"
+]
