@@ -3,7 +3,6 @@ use std::io;
 
 use clap::Parser;
 use csv::{ReaderBuilder, Trim, WriterBuilder};
-use simple_logger::SimpleLogger;
 
 use tx_processor::ledger::Ledger;
 
@@ -15,8 +14,7 @@ struct Cli {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    std::env::set_var("RUST_BACKTRACE", "full");
-    SimpleLogger::new().init().unwrap();
+    env_logger::init();
 
     let mut writer = WriterBuilder::new()
         .has_headers(false)
