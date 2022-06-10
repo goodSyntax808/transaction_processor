@@ -53,9 +53,9 @@ a `Dispute` transaction must not have an amount but a `Deposit` or `Withdrawal` 
 
 ----
 ### Notes && Possible Improvements
-[ ] Use fuzzing for testing 
-[ ] Add cacheing of the `transaction_log` that is scanned when a dispute is made.  Use a LRU map, since recently made transactions are most likely to be disputed.
-[ ] Documentation
-[ ] Add async
-[ ] Improve `TxError` beyond a simple enum
+- Use fuzzing for testing 
+- Add cacheing of the `transaction_log` that is scanned when a dispute is made.  Use a LRU map, since recently made transactions are most likely to be disputed.
+- Documentation
+- Add async
+- Improve `TxError` beyond a simple enum
 
