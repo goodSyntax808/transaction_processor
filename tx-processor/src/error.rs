@@ -2,12 +2,13 @@ use std::io;
 
 use thiserror::Error;
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Error, Debug)]
 pub enum TxError {
     #[error("CSV Error")]
-    CsvError(#[from] csv::Error),
+    Csv(#[from] csv::Error),
     #[error("I/O Error")]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
     #[error("Insufficient Funds")]
     InsufficientFunds,
     #[error("Missing amount in transaction data")]

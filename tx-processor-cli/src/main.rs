@@ -1,3 +1,8 @@
+#![deny(rust_2018_idioms)]
+#![deny(clippy::correctness)]
+#![deny(clippy::perf)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
 use std::error::Error;
 use std::io;
 

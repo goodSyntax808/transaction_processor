@@ -9,6 +9,7 @@ use crate::error::TxError;
 
 pub const NUM_DECIMAL_PLACES: u32 = 4;
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum TransactionRecordType {
@@ -19,6 +20,7 @@ pub enum TransactionRecordType {
     Chargeback,
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Deserialize)]
 pub struct TransactionRecord {
     #[serde(rename = "type")]
@@ -37,6 +39,7 @@ pub struct Transaction {
     pub tx_type: TransactionType,
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum TransactionType {
     Deposit { amount: PositiveDecimal },
@@ -50,10 +53,19 @@ pub enum TransactionType {
 pub struct PositiveDecimal(Decimal);
 
 pub trait Transact {
+    /// # Errors
+    /// Errors when the given `amount` would cause an overflow
     fn deposit(&mut self, amount: PositiveDecimal) -> Result<(), TxError>;
 
+    /// # Errors
+    /// Errors when the given `amount` would cause an underflow/be negative
     fn withdraw(&mut self, amount: PositiveDecimal) -> Result<(), TxError>;
 
+    /// # Errors
+    /// Errors when the dispute is not a valid transaction.
+    /// 1. The `disputed_tx_id` is not owned by `self`
+    /// 2. The `disputed_tx_id` is not in the `transaction_log`
+    /// 3. The `disputed_tx_id` is already disputed (ie, in the `disputed_tx_map`)
     fn dispute(
         &mut self,
         disputed_tx_id: u32,
@@ -61,12 +73,20 @@ pub trait Transact {
         disputed_tx_map: &mut HashMap<u32, (u16, PositiveDecimal)>,
     ) -> Result<(), TxError>;
 
+    /// # Errors
+    /// Errors when the resolve is not a valid transaction.
+    /// 1. The `transaction_id` is not owned by `self`
+    /// 2. The `transaction_id` is not in the `disputed_tx_map`
     fn resolve(
         &mut self,
         transaction_id: u32,
         disputed_tx_map: &mut HashMap<u32, (u16, PositiveDecimal)>,
     ) -> Result<(), TxError>;
 
+    /// # Errors
+    /// Errors when the chargeback is not a valid transaction.
+    /// 1. The `transaction_id` is not owned by `self`
+    /// 2. The `transaction_id` is not in the `disputed_tx_map`
     fn chargeback(
         self,
         transaction_id: u32,
@@ -94,6 +114,8 @@ impl TryFrom<f64> for PositiveDecimal {
 }
 
 impl PositiveDecimal {
+    /// # Errors
+    /// Errors when `other` + `self` would overflow
     pub fn checked_add(self, other: PositiveDecimal) -> Result<PositiveDecimal, TxError> {
         self.0
             .checked_add(other.0)
@@ -101,6 +123,8 @@ impl PositiveDecimal {
             .ok_or(TxError::InvalidAmount)
     }
 
+    /// # Errors
+    /// Errors when `other` is > `self`, since the resulting number would not be Positive
     pub fn checked_sub(self, other: PositiveDecimal) -> Result<PositiveDecimal, TxError> {
         if self >= other {
             self.0
@@ -114,6 +138,7 @@ impl PositiveDecimal {
 }
 
 impl Transaction {
+    #[must_use]
     pub fn new(client_id: u16, transaction_id: u32, tx_type: TransactionType) -> Self {
         Transaction {
             client_id,
@@ -180,12 +205,12 @@ mod tests {
 
         assert!(PositiveDecimal::try_from(Decimal::ZERO).is_ok());
 
-        let long_decimal = PositiveDecimal::try_from(1.123456).unwrap();
-        let short_decimal = PositiveDecimal::try_from(1.1235).unwrap();
+        let long_decimal = PositiveDecimal::try_from(1.123_456).unwrap();
+        let short_decimal = PositiveDecimal::try_from(1.123_5).unwrap();
         assert_eq!(long_decimal, short_decimal);
 
-        let long_decimal = PositiveDecimal::try_from(1.654321).unwrap();
-        let short_decimal = PositiveDecimal::try_from(1.6543).unwrap();
+        let long_decimal = PositiveDecimal::try_from(1.654_321).unwrap();
+        let short_decimal = PositiveDecimal::try_from(1.654_3).unwrap();
         assert_eq!(long_decimal, short_decimal);
     }
 
