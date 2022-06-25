@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
+use rand::Rng;
+use rand::distributions::Standard;
+use rand::prelude::{Distribution};
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +24,7 @@ pub enum TransactionRecordType {
 }
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TransactionRecord {
     #[serde(rename = "type")]
     pub transaction_type: TransactionRecordType,
@@ -189,6 +192,42 @@ impl TryFrom<TransactionRecord> for Transaction {
             )),
         }
     }
+}
+
+impl Distribution<TransactionRecordType> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TransactionRecordType {
+        match rng.gen_range(0..5) {
+            0 => TransactionRecordType::Deposit,
+            1 => TransactionRecordType::Withdrawal,
+            2 => TransactionRecordType::Dispute,
+            3 => TransactionRecordType::Resolve,
+            4 => TransactionRecordType::Chargeback,
+            _ => unreachable!()
+        }
+    }
+
+}
+
+impl Distribution<TransactionRecord> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TransactionRecord {
+        let tx_type: TransactionRecordType = rng.gen();
+        let has_amount = rng.gen_bool(0.5);
+        let mut amount: Option<Decimal> = None;
+        if has_amount {
+            let mut val = rng.gen::<f64>();
+            while val.is_sign_negative() {
+                val = rng.gen::<f64>();
+            }
+            amount = Some(Decimal::from_f64(val).unwrap());
+        }
+        TransactionRecord {
+            transaction_type: tx_type,
+            client_id: rng.gen::<u16>(),
+            transaction_id: rng.next_u32(),
+            amount
+        }
+    }
+
 }
 
 #[cfg(test)]

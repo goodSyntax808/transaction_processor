@@ -438,6 +438,7 @@ version = "0.1.0"
 dependencies = [
  "csv",
  "log",
+ "rand",
  "rust_decimal",
  "serde",
  "thiserror",
@@ -450,6 +451,7 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
+ "log",
  "rand",
  "tx-processor",
 ]

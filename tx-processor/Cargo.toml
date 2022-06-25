@@ -11,3 +11,4 @@ log = "0.4.17"
 thiserror = "1.0.31"
 rust_decimal = { version = "1.24.0", features = ["serde-with-float"] }
 csv = "1.1.6"
+rand = "0.8.5"

@@ -30,13 +30,14 @@ impl Ledger {
     ) {
         for transaction in transactions
             .into_iter()
-            .flat_map(|res| res.map_err(|e| error!("Malformed CSV Record: {:?}", e)))
+            //.flat_map(|res| res.map_err(|e| error!("Malformed CSV Record: {:?}", e)))
+            .flatten()
             .flat_map(|record| {
-                Transaction::try_from(record).map_err(|e| error!("Malformed Transaction: {:?}", e))
+                Transaction::try_from(record)//.map_err(|e| error!("Malformed Transaction: {:?}", e))
             })
         {
             self.add_tx(transaction)
-                .map_err(|e| warn!("Invalid Transaction: {:?}", e))
+                //.map_err(|e| warn!("Invalid Transaction: {:?}", e))
                 .ok();
         }
     }
