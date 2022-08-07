@@ -50,10 +50,13 @@ pub enum TransactionType {
 pub struct PositiveDecimal(Decimal);
 
 pub trait Transact {
+    /// # Errors
     fn deposit(&mut self, amount: PositiveDecimal) -> Result<(), TxError>;
 
+    /// # Errors
     fn withdraw(&mut self, amount: PositiveDecimal) -> Result<(), TxError>;
 
+    /// # Errors
     fn dispute(
         &mut self,
         disputed_tx_id: u32,
@@ -61,6 +64,7 @@ pub trait Transact {
         disputed_tx_map: &mut HashMap<u32, (u16, PositiveDecimal)>,
     ) -> Result<(), TxError>;
 
+    /// # Errors
     fn resolve(
         &mut self,
         transaction_id: u32,

@@ -3,6 +3,7 @@
 #![deny(clippy::perf)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
 
 pub mod account;
 pub mod error;

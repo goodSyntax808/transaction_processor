@@ -17,26 +17,31 @@ pub(crate) struct Balance {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// An account contains a Id and current balance
 pub struct Account<const IS_LOCKED: bool> {
     pub(crate) client_id: u16,
     pub(crate) balance: Balance,
 }
 
 impl Balance {
+    /// Method provides the balance of the Account
     pub(crate) fn available(&self) -> &PositiveDecimal {
         &self.available
     }
 
+    /// Methods provides the balance Held for Pending transactions
     pub(crate) fn held(&self) -> &PositiveDecimal {
         &self.held
     }
 
+    /// Total value of the clients Account
     pub(crate) fn total(&self) -> Result<PositiveDecimal, TxError> {
         self.available.checked_add(self.held)
     }
 }
 
 impl Serialize for Balance {
+    /// Custom serde encoding of the Balance struct
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
