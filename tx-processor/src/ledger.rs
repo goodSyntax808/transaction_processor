@@ -30,8 +30,7 @@ impl Ledger {
     ) {
         for transaction in transactions
             .into_iter()
-            .map(|res| res.map_err(|e| error!("Malformed CSV Record: {:?}", e)))
-            .flatten()
+            .flat_map(|res| res.map_err(|e| error!("Malformed CSV Record: {:?}", e)))
             .flat_map(|record| {
                 Transaction::try_from(record).map_err(|e| error!("Malformed Transaction: {:?}", e))
             })
@@ -42,6 +41,8 @@ impl Ledger {
         }
     }
 
+    /// # Errors
+    /// # Panics
     pub fn add_tx(&mut self, transaction: Transaction) -> Result<(), TxError> {
         if self.locked_accounts.contains_key(&transaction.client_id) {
             return Err(TxError::LockedAccount);
@@ -92,14 +93,17 @@ impl Ledger {
         Ok(())
     }
 
+    #[must_use]
     pub fn active_accounts(&self) -> &HashMap<u16, Account<false>> {
         &self.active_accounts
     }
 
+    #[must_use]
     pub fn locked_accounts(&self) -> &HashMap<u16, Account<true>> {
         &self.locked_accounts
     }
 
+    #[must_use]
     pub fn transactions(&self) -> &Vec<Transaction> {
         &self.transactions
     }
@@ -110,6 +114,7 @@ mod test {
     use super::*;
     use rust_decimal::prelude::*;
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn test_ledger() {
         let mut ledger = Ledger::default();
@@ -215,7 +220,7 @@ mod test {
         assert_eq!(balance.held(), &zero);
 
         // withdraw
-        let huge_amount = PositiveDecimal::try_from(9000000000.1000).unwrap();
+        let huge_amount = PositiveDecimal::try_from(9_000_000_000.100_0).unwrap();
         let tx = Transaction::new(
             client_id,
             tx_id + 2,

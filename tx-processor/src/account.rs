@@ -62,6 +62,7 @@ impl From<Account<false>> for Account<true> {
 }
 
 impl Account<false> {
+    #[must_use]
     pub fn new(client_id: u16) -> Self {
         Account {
             client_id,
@@ -119,17 +120,18 @@ impl Transact for Account<false> {
         transaction_id: u32,
         disputed_tx_map: &mut HashMap<u32, (u16, PositiveDecimal)>,
     ) -> Result<(), TxError> {
-        if let Some(&(client_id, amount)) = disputed_tx_map.get(&transaction_id) {
-            if self.client_id != client_id {
-                Err(TxError::InsufficientPermission)
-            } else {
-                self.balance.available = self.balance.available.checked_add(amount)?;
-                self.balance.held = self.balance.held.checked_sub(amount)?;
-                disputed_tx_map.remove(&transaction_id);
-                Ok(())
+        match disputed_tx_map.get(&transaction_id) {
+            Some(&(client_id, amount)) => {
+                if self.client_id == client_id {
+                    self.balance.available = self.balance.available.checked_add(amount)?;
+                    self.balance.held = self.balance.held.checked_sub(amount)?;
+                    disputed_tx_map.remove(&transaction_id);
+                    Ok(())
+                } else {
+                    Err(TxError::InsufficientPermission)
+                }
             }
-        } else {
-            Err(TxError::NotFound)
+            None => Err(TxError::NotFound),
         }
     }
 
@@ -138,22 +140,23 @@ impl Transact for Account<false> {
         transaction_id: u32,
         disputed_tx_map: &mut HashMap<u32, (u16, PositiveDecimal)>,
     ) -> (Result<Account<true>, TxError>, Option<Account<false>>) {
-        if let Some(&(client_id, amount)) = disputed_tx_map.get(&transaction_id) {
-            if client_id != self.client_id {
-                (Err(TxError::InsufficientPermission), Some(self))
-            } else {
-                let held_sub_res = self.balance.held.checked_sub(amount);
-                match held_sub_res {
-                    Ok(amount) => {
-                        self.balance.held = amount;
-                        disputed_tx_map.remove(&transaction_id);
-                        (Ok(Account::<true>::from(self)), None)
+        match disputed_tx_map.get(&transaction_id) {
+            Some(&(client_id, amount)) => {
+                if client_id == self.client_id {
+                    let held_sub_res = self.balance.held.checked_sub(amount);
+                    match held_sub_res {
+                        Ok(amount) => {
+                            self.balance.held = amount;
+                            disputed_tx_map.remove(&transaction_id);
+                            (Ok(Account::<true>::from(self)), None)
+                        }
+                        Err(e) => (Err(e), Some(self)),
                     }
-                    Err(e) => (Err(e), Some(self)),
+                } else {
+                    (Err(TxError::InsufficientPermission), Some(self))
                 }
             }
-        } else {
-            (Err(TxError::NotFound), Some(self))
+            None => (Err(TxError::NotFound), Some(self)),
         }
     }
 }
@@ -226,7 +229,7 @@ mod test {
         assert!(locked_account.deposit(amount).is_err());
         assert!(locked_account.withdraw(amount).is_err());
         assert!(locked_account
-            .dispute(888, &vec![], &mut HashMap::new())
+            .dispute(888, &[], &mut HashMap::new())
             .is_err());
         assert!(locked_account.resolve(888, &mut HashMap::new()).is_err());
         assert!(locked_account
@@ -299,12 +302,12 @@ mod test {
 
         // can't dispute something that's already disputed
         let mut account = Account::new(client_id);
-        let res = account.dispute(disputed_tx_id, &vec![], &mut map);
+        let res = account.dispute(disputed_tx_id, &[], &mut map);
         assert!(res.is_err());
 
         // can't find a transaction
         map.clear();
-        let res = account.dispute(disputed_tx_id, &vec![], &mut map);
+        let res = account.dispute(disputed_tx_id, &[], &mut map);
         assert!(res.is_err());
 
         // can't dispute a transaction from someone else
@@ -313,18 +316,18 @@ mod test {
             disputed_tx_id,
             TransactionType::Deposit { amount },
         );
-        let res = account.dispute(disputed_tx_id, &vec![tx], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx], &mut map);
         assert!(res.is_err());
 
         // can't dispute a transaction other than a deposit or withdrawal
         let tx = Transaction::new(client_id, disputed_tx_id, TransactionType::Dispute);
-        let res = account.dispute(disputed_tx_id, &vec![tx], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx], &mut map);
         assert!(res.is_err());
         let tx = Transaction::new(client_id, disputed_tx_id, TransactionType::Resolve);
-        let res = account.dispute(disputed_tx_id, &vec![tx], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx], &mut map);
         assert!(res.is_err());
         let tx = Transaction::new(client_id, disputed_tx_id, TransactionType::Chargeback);
-        let res = account.dispute(disputed_tx_id, &vec![tx], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx], &mut map);
         assert!(res.is_err());
 
         // cant dispute deposits or withdrawals without funds
@@ -334,7 +337,7 @@ mod test {
             TransactionType::Deposit { amount },
         );
         assert!(map.is_empty());
-        let res = account.dispute(disputed_tx_id, &vec![tx], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx], &mut map);
         assert!(res.is_err());
         assert!(map.is_empty());
 
@@ -344,12 +347,12 @@ mod test {
             TransactionType::Withdrawal { amount },
         );
         assert!(map.is_empty());
-        let res = account.dispute(disputed_tx_id, &vec![tx], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx], &mut map);
         assert!(res.is_err());
         assert!(map.is_empty());
 
         // can dispute deposits and withdrawals with funds
-        let large_amount = PositiveDecimal::try_from(100000000.1000).unwrap();
+        let large_amount = PositiveDecimal::try_from(100_000_000.100_0).unwrap();
         account.deposit(large_amount).unwrap();
         assert_eq!(account.balance.available, large_amount);
         assert_eq!(account.balance.held, zero);
@@ -366,7 +369,7 @@ mod test {
             TransactionType::Deposit { amount },
         );
         assert!(map.is_empty());
-        let res = account.dispute(disputed_tx_id, &vec![tx_1, tx_2], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx_1, tx_2], &mut map);
         assert!(res.is_ok());
         assert_eq!(map.len(), 1);
         assert_eq!(map.get(&disputed_tx_id).unwrap(), &(client_id, amount));
@@ -390,7 +393,7 @@ mod test {
         );
         map.clear();
         assert!(map.is_empty());
-        let res = account.dispute(disputed_tx_id, &vec![tx_1, tx_2], &mut map);
+        let res = account.dispute(disputed_tx_id, &[tx_1, tx_2], &mut map);
         assert!(res.is_ok());
         assert_eq!(map.len(), 1);
         assert_eq!(map.get(&disputed_tx_id).unwrap(), &(client_id, amount));
@@ -439,9 +442,7 @@ mod test {
             disputed_tx_id,
             TransactionType::Deposit { amount },
         );
-        account
-            .dispute(disputed_tx_id, &vec![tx], &mut map)
-            .unwrap();
+        account.dispute(disputed_tx_id, &[tx], &mut map).unwrap();
         assert_eq!(account.balance.available, zero);
         assert_eq!(account.balance.held, amount);
         let res = account.resolve(disputed_tx_id, &mut map);
@@ -486,9 +487,7 @@ mod test {
             disputed_tx_id,
             TransactionType::Deposit { amount },
         );
-        account
-            .dispute(disputed_tx_id, &vec![tx], &mut map)
-            .unwrap();
+        account.dispute(disputed_tx_id, &[tx], &mut map).unwrap();
         assert_eq!(account.balance.available, zero);
         assert_eq!(account.balance.held, amount);
         let (res, opt) = account.chargeback(disputed_tx_id, &mut map);

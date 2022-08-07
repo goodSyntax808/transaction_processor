@@ -94,6 +94,7 @@ impl TryFrom<f64> for PositiveDecimal {
 }
 
 impl PositiveDecimal {
+    /// # Errors
     pub fn checked_add(self, other: PositiveDecimal) -> Result<PositiveDecimal, TxError> {
         self.0
             .checked_add(other.0)
@@ -101,6 +102,7 @@ impl PositiveDecimal {
             .ok_or(TxError::InvalidAmount)
     }
 
+    /// # Errors
     pub fn checked_sub(self, other: PositiveDecimal) -> Result<PositiveDecimal, TxError> {
         if self >= other {
             self.0
@@ -114,6 +116,7 @@ impl PositiveDecimal {
 }
 
 impl Transaction {
+    #[must_use]
     pub fn new(client_id: u16, transaction_id: u32, tx_type: TransactionType) -> Self {
         Transaction {
             client_id,
@@ -180,11 +183,11 @@ mod tests {
 
         assert!(PositiveDecimal::try_from(Decimal::ZERO).is_ok());
 
-        let long_decimal = PositiveDecimal::try_from(1.123456).unwrap();
+        let long_decimal = PositiveDecimal::try_from(1.123_456).unwrap();
         let short_decimal = PositiveDecimal::try_from(1.1235).unwrap();
         assert_eq!(long_decimal, short_decimal);
 
-        let long_decimal = PositiveDecimal::try_from(1.654321).unwrap();
+        let long_decimal = PositiveDecimal::try_from(1.654_321).unwrap();
         let short_decimal = PositiveDecimal::try_from(1.6543).unwrap();
         assert_eq!(long_decimal, short_decimal);
     }
